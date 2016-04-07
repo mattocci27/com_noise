@@ -39,13 +39,13 @@ sp.par <- 0.1
 dm <- dm.year
 
 # this substract species from the observed species
-sp.trim <- function(dm, n.sp, n.rep, sp.par){
+sp.trim <- function(dm, sp.vec, n.sp, n.rep, sp.par){
   pool.richness <- as.integer(ncol(dm) * (1 - sp.par))
   temp.dat <- data.frame(sp = names(sp.vec))
   for (i in 1:n.rep){
     temp.sp <- sample(colnames(dm), n.sp, prob = sp.vec)
     temp.dat2 <- data.frame(sp = temp.sp, site = 1)
-    names(temp.dat2)[2] <- paste("site", i, sep = ".")
+    names(temp.dat2)[2] <- paste("rep", i, sep = ".")
     suppressWarnings(temp.dat <- full_join(temp.dat, temp.dat2, by = "sp"))
   }
    temp.dat[is.na(temp.dat) == T] <- 0
@@ -63,6 +63,6 @@ sp.trim <- function(dm, n.sp, n.rep, sp.par){
 #   76   67   46   47
 
 # example: remomving 20% of species
-sp.trim(dm.year, n.sp = 76, n.rep = 3, sp.par = 0.2) %>% sp.richness
+sp.trim(dm.year, sp.vec = sp.vec, n.sp = 76, n.rep = 3, sp.par = 0.2) %>% sp.richness
 
-sp.trim(dm.year, n.sp = 76, n.rep = 3, sp.par = 0.2)
+sp.trim(dm.year, sp.vec = sp.vec, n.sp = 76, n.rep = 3, sp.par = 0.2)
