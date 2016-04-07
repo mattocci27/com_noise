@@ -38,23 +38,12 @@ sp.par <- 0.1
 
 dm <- dm.year
 
-i <- 1
-year <- 2011
-
-sp.par <- 0.1
-
 # this substract species from the observed species
-sp.trim <- function(dm, year, sp.par){
-  if(year == 2011) year <- 1
-  else if (year == 2012) year <- 2
-  else if (year == 2013) year <- 3
-  else if (year == 2014) year <- 4
-
+sp.trim <- function(dm, n.sp, n.rep, sp.par){
   pool.richness <- as.integer(ncol(dm) * (1 - sp.par))
-  com.richness <- sp.richness(dm)
   temp.dat <- data.frame(sp = names(sp.vec))
-  for (i in 1:10){
-    temp.sp <- sample(colnames(dm), com.richness[year], prob = sp.vec)
+  for (i in 1:n.rep){
+    temp.sp <- sample(colnames(dm), n.sp, prob = sp.vec)
     temp.dat2 <- data.frame(sp = temp.sp, site = 1)
     names(temp.dat2)[2] <- paste("site", i, sep = ".")
     suppressWarnings(temp.dat <- full_join(temp.dat, temp.dat2, by = "sp"))
@@ -69,16 +58,11 @@ sp.trim <- function(dm, year, sp.par){
 
 # --------------------------------------------------------------------------
 
+# > dm.year %>% sp.richness
+# 2011 2012 2013 2014
+#   76   67   46   47
+
 # example: remomving 20% of species
-sp.trim(dm.year, year = 2011, sp.par = 0.1) %>% sp.richness
+sp.trim(dm.year, n.sp = 76, n.rep = 3, sp.par = 0.2) %>% sp.richness
 
-sp.trim(dm.year, year = 2011, sp.par = 0.2)
-
-
-dm.year %>% sp.richness
-
-moge <- t(dm.year[1:2,]) %>%
-  as.data.frame() %>%
-  mutate(sp = rownames(.)) %>%
-  rename()
-  mutate(temp = .["2011"] - .["2012"])
+sp.trim(dm.year, n.sp = 76, n.rep = 3, sp.par = 0.2)
