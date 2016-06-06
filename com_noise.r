@@ -39,22 +39,28 @@ sp.par <- 0.1
 dm <- dm.year
 
 # this substract species from the observed species
-sp.trim <- function(dm, sp.vec, n.sp, n.rep, sp.par){
+sp.trim <- function(dm, sp.vec, n.sp, n.rep, sp.par, replace = F){
   pool.richness <- as.integer(ncol(dm) * (1 - sp.par))
-  temp.dat <- data.frame(sp = names(sp.vec))
+  sp.vec.trimmed <- sample(sp.vec, pool.richness)
+  sp.vec.trimmed <- sp.vec.trimmed [order(names(sp.vec.trimmed))]
+  temp.dat <- data.frame(sp = names(sp.vec.trimmed))
   for (i in 1:n.rep){
-    temp.sp <- sample(colnames(dm), n.sp, prob = sp.vec)
+    temp.sp <- sample(names(sp.vec.trimmed), n.sp, prob = sp.vec.trimmed, replace = replace) %>% unique
     temp.dat2 <- data.frame(sp = temp.sp, site = 1)
     names(temp.dat2)[2] <- paste("rep", i, sep = ".")
     suppressWarnings(temp.dat <- full_join(temp.dat, temp.dat2, by = "sp"))
   }
+   #if all NA -> remove
+
+  #  sp.not.apper <- apply(temp.dat[, -1], 1, sum, na.rm = T)
+  #
+   sp.name <- temp.dat %>% .$sp
    temp.dat[is.na(temp.dat) == T] <- 0
    sim.dat <- t(temp.dat[,-1])
-   colnames(sim.dat) <- colnames(dm)
-  #  rownames(sim.dat) <- rownames(dm)
+  #  colnames(sim.dat) <- colnames(dm)
+   colnames(sim.dat) <- sp.name
    return(sim.dat)
 }
-
 
 # --------------------------------------------------------------------------
 
@@ -63,6 +69,6 @@ sp.trim <- function(dm, sp.vec, n.sp, n.rep, sp.par){
 #   76   67   46   47
 
 # example: remomving 20% of species
-sp.trim(dm.year, sp.vec = sp.vec, n.sp = 76, n.rep = 3, sp.par = 0.2) %>% sp.richness
+sp.trim(dm.year, sp.vec = sp.vec, n.sp = 76, n.rep = 3, sp.par = 0.2, replace = T) %>% sp.richness
 
 sp.trim(dm.year, sp.vec = sp.vec, n.sp = 76, n.rep = 3, sp.par = 0.2)
