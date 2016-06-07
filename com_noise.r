@@ -37,16 +37,23 @@ sp.richness <- function(x){
 sp.par <- 0.1
 
 dm <- dm.year
-
+n.rep <- 10
 # this substract species from the observed species
-sp.trim <- function(dm, sp.vec, n.sp, n.rep, sp.par, replace = F){
+sp.trim <- function(dm, sp.vec, n.rep, sp.par){
   pool.richness <- as.integer(ncol(dm) * (1 - sp.par))
   sp.vec.trimmed <- sample(sp.vec, pool.richness)
   sp.vec.trimmed <- sp.vec.trimmed [order(names(sp.vec.trimmed))]
   temp.dat <- data.frame(sp = names(sp.vec.trimmed))
+  temp.sp <- NULL
   for (i in 1:n.rep){
-    temp.sp <- sample(names(sp.vec.trimmed), n.sp, prob = sp.vec.trimmed, replace = replace) %>% unique
-    temp.dat2 <- data.frame(sp = temp.sp, site = 1)
+    # temp.sp <- sample(names(sp.vec.trimmed), n.sp, prob = sp.vec.trimmed, replace = replace) %>% unique
+    for (i in 1:length(sp.vec.trimmed)){
+      temp.vec <- c(sp.vec.trimmed[i], 1 - sp.vec.trimmed[i])
+      names(temp.vec)[2] <- NA
+      temp.sp[i] <- sample(names(temp.vec), 1, prob = temp.vec)
+    }
+    temp.sp2 <- na.omit(temp.sp)
+    temp.dat2 <- data.frame(sp = temp.sp2, site = 1)
     names(temp.dat2)[2] <- paste("rep", i, sep = ".")
     suppressWarnings(temp.dat <- full_join(temp.dat, temp.dat2, by = "sp"))
   }
@@ -69,6 +76,6 @@ sp.trim <- function(dm, sp.vec, n.sp, n.rep, sp.par, replace = F){
 #   76   67   46   47
 
 # example: remomving 20% of species
-sp.trim(dm.year, sp.vec = sp.vec, n.sp = 76, n.rep = 3, sp.par = 0.2, replace = T) %>% sp.richness
+sp.trim(dm.year, sp.vec = sp.vec, n.rep = 3, sp.par = 0.2) %>% sp.richness
 
-sp.trim(dm.year, sp.vec = sp.vec, n.sp = 76, n.rep = 3, sp.par = 0.2)
+sp.trim(dm.year, sp.vec = sp.vec, n.rep = 3, sp.par = 0.2)
