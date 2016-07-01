@@ -47,15 +47,15 @@ sp.trim <- function(dm, sp.vec, n.rep, sp.par){
   temp.sp <- NULL
   for (i in 1:n.rep){
     # temp.sp <- sample(names(sp.vec.trimmed), n.sp, prob = sp.vec.trimmed, replace = replace) %>% unique
-    for (i in 1:length(sp.vec.trimmed)){
-      temp.vec <- c(sp.vec.trimmed[i], 1 - sp.vec.trimmed[i])
+    for (j in 1:length(sp.vec.trimmed)){
+      temp.vec <- c(sp.vec.trimmed[j], 1 - sp.vec.trimmed[j])
       names(temp.vec)[2] <- NA
-      temp.sp[i] <- sample(names(temp.vec), 1, prob = temp.vec)
+      temp.sp[j] <- sample(names(temp.vec), 1, prob = temp.vec)
     }
     temp.sp2 <- na.omit(temp.sp)
     temp.dat2 <- data.frame(sp = temp.sp2, site = 1)
     names(temp.dat2)[2] <- paste("rep", i, sep = ".")
-    suppressWarnings(temp.dat <- full_join(temp.dat2, temp.dat2, by = "sp"))
+    suppressWarnings(temp.dat <- full_join(temp.dat, temp.dat2, by = "sp"))
   }
    #if all NA -> remove
 
