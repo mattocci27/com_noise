@@ -55,7 +55,7 @@ sp.trim <- function(dm, sp.vec, n.rep, sp.par){
     temp.sp2 <- na.omit(temp.sp)
     temp.dat2 <- data.frame(sp = temp.sp2, site = 1)
     names(temp.dat2)[2] <- paste("rep", i, sep = ".")
-    suppressWarnings(temp.dat <- full_join(temp.dat, temp.dat2, by = "sp"))
+    suppressWarnings(temp.dat <- full_join(temp.dat2, temp.dat2, by = "sp"))
   }
    #if all NA -> remove
 
@@ -76,6 +76,6 @@ sp.trim <- function(dm, sp.vec, n.rep, sp.par){
 #   76   67   46   47
 
 # example: remomving 20% of species
-sp.trim(dm.year, sp.vec = sp.vec, n.rep = 3, sp.par = 0.2) %>% sp.richness
+sp.trim(dm.year, sp.vec = sp.vec, n.rep = 10, sp.par = 0.2) %>% sp.richness
 
-sp.trim(dm.year, sp.vec = sp.vec, n.rep = 3, sp.par = 0.2)
+sp.trim(dm.year, sp.vec = sp.vec, n.rep = 10, sp.par = 0.2) %>% head
