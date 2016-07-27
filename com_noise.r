@@ -26,6 +26,14 @@ dm.year <- as.matrix(d.year[,-1])
 rownames(dm.year) <- d.year$year
 dm.year[,-1][dm.year[,-1] > 0] <- 1 # use 1 or 0
 
+# grouping by years and sites
+dm.ys <- d %>%
+  select(-1) %>%
+  group_by(year, site) %>%
+  summarise_each(funs(sum)) %>%
+  as.data.frame
+rownames(dm.ys) <- paste(dm.ys$year, dm.ys$site, sep = "_")
+dm.ys <- dm.ys %>% select(-1:-2)
 
 # functions -----------------------------------------------------------------
 # species richness
@@ -79,3 +87,38 @@ sp.trim <- function(dm, sp.vec, n.rep, sp.par){
 sp.trim(dm.year, sp.vec = sp.vec, n.rep = 10, sp.par = 0.2) %>% sp.richness
 
 sp.trim(dm.year, sp.vec = sp.vec, n.rep = 10, sp.par = 0.2) %>% head
+
+
+# dm.year: row - year
+# dm.ys: row - site * year
+# sp.par: fraction of removed species
+# n.rep: numbers of communits for simulated data
+# n.runs: numbers of replicatoin of the whole process
+
+# ES1: mean of anaosim statistic
+# ES2: mean of anaosim statistic / sd of anaosim statistic
+
+# ------------------------------------------------
+anosim_ES <- function(dm.year, dm.ys, sp.par = 0.2, n.rep = 10, n.runs = 999, ...){
+  temp.gr <- c(rep("rand", n.rep), rep(2011:2014, each = n.rep)) %>%
+    as.factor
+
+  res <- numeric(n.runs)
+  for (i in 1:n.runs){
+    temp <- sp.trim(dm.year, sp.vec = sp.vec, n.rep = n.rep, sp.par = sp.par)
+    temp2 <- merge(t(temp), t(dm.ys), by = "row.names") %>%
+      t
+    colnames(temp2) <- temp2[1, ]
+    temp2 <- temp2[-1, ] %>%
+      as.data.frame %>%
+      apply(., 2, as.numeric)
+    res[i] <- anosim(temp2, grouping = temp.gr, distance = "bray", permutations = 999)$statistic %>%
+    as.numeric
+  }
+  list(ES1 = mean(res), ES2 = mean(res) / sd(res))
+}
+
+#example
+anosim_ES(dm.year, dm.ys, sp.par = 0.1, n.rep = 10, n.runs = 99)
+
+anosim_ES(dm.year, dm.ys, sp.par = 0.4, n.rep = 10, n.runs = 99)
