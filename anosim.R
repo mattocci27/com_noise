@@ -21,6 +21,15 @@ d.year <- d %>%
   group_by(year) %>%
   summarise_each(funs(sum))
 
+# grouping by years and sites
+dm.ys <- d %>%
+  select(-1) %>%
+  group_by(year, site) %>%
+  summarise_each(funs(sum)) %>%
+  as.data.frame
+rownames(dm.ys) <- paste(dm.ys$year, dm.ys$site, sep = "_")
+dm.ys <- dm.ys %>% select(-1:-2)
+
 # species - site matrix
 dm.year <- as.matrix(d.year[,-1])
 rownames(dm.year) <- d.year$year
@@ -31,19 +40,6 @@ sp.richness <- function(x){
   x[x > 0] <- 1
   apply(x, 1, sum)
 }
-
-sp.par <- 0.1
-
-dm <- dm.year
-n.rep <- 10
-
-data(dune)
-data(dune.env)
-dune.dist <- vegdist(dune)
-attach(dune.env)
-dune.ano <- anosim(dune.dist, Management)
-
-dune.ano$statistic
 
 # this substract species from the observed species
 sp.trim <- function(dm, sp.vec, n.rep, sp.par){
@@ -85,45 +81,26 @@ sp.trim <- function(dm, sp.vec, n.rep, sp.par){
 # example: remomving 20% of species
 temp <- sp.trim(dm.year, sp.vec = sp.vec, n.rep = 10, sp.par = 0.2)
 
-# grouping by years and sites
-dm.ys <- d %>%
-  select(-1) %>%
-  group_by(year, site) %>%
-  summarise_each(funs(sum)) %>%
-  as.data.frame
-rownames(dm.ys) <- paste(dm.ys$year, dm.ys$site, sep = "_")
-dm.ys <- dm.ys %>% select(-1:-2)
 
-temp2 <- merge(t(temp), t(dm.ys), by = "row.names") %>%
-  t
-
-
-colnames(temp2) <- temp2[1, ]
-
-temp2 <- temp2[-1, ] %>%
-  as.data.frame %>%
-  apply(., 2, as.numeric)
-
-temp.gr <- c(rep("rand", 10), rep(2011:2014, each = 10)) %>%
-  as.factor
-
-
-anosim(temp2, grouping = temp.gr, distance = "bray", permutations = 99)
 
 ########
-anosim_SES <- function(dm.year, dm.ys, sp.par = 0.2, n.rep = 10, ...){
+anosim_ES <- function(dm.year, dm.ys, sp.par = 0.2, n.rep = 10, n.runs = 999, ...){
   temp.gr <- c(rep("rand", n.rep), rep(2011:2014, each = 10)) %>%
     as.factor
-  temp <- sp.trim(dm.year, sp.vec = sp.vec, n.rep = 10, sp.par = 0.2)
-  temp2 <- merge(t(temp), t(dm.ys), by = "row.names") %>%
-    t
-  colnames(temp2) <- temp2[1, ]
-  temp2 <- temp2[-1, ] %>%
-    as.data.frame %>%
-    apply(., 2, as.numeric)
-  res <- anosim(temp2, grouping = temp.gr, distance = "bray", permutations = 99)
 
-  obs <- res$
-
-
+  res <- numeric(n.runs)
+  for (i in 1:n.runs){
+    temp <- sp.trim(dm.year, sp.vec = sp.vec, n.rep = 10, sp.par = 0.1)
+    temp2 <- merge(t(temp), t(dm.ys), by = "row.names") %>%
+      t
+    colnames(temp2) <- temp2[1, ]
+    temp2 <- temp2[-1, ] %>%
+      as.data.frame %>%
+      apply(., 2, as.numeric)
+    res[i] <- anosim(temp2, grouping = temp.gr, distance = "bray", permutations = 99)$statistic %>%
+    as.numeric
+  }
+  list(ES1 = mean(res), ES2 = mean(res) / sd(res))
 }
+
+anosim_ES(dm.year, dm.ys, sp.par = 0.1, n.rep = 10, n.runs = 99)
