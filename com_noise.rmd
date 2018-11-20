@@ -1,0 +1,299 @@
+---
+title: Ants
+author: Masatoshi Katabuchi
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+#rmdformats::material
+  html_document:
+    fig_caption: yes
+    theme: spacelab #readable #sandstone #spacelab #flatly
+    highlight: pygments #tango #kate
+    toc: TRUE
+    toc_depth: 2
+    number_sections: TRUE
+    toc_float:
+      collapsed: TRUE
+      smooth_scroll: TRUE
+      toc: true
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(
+                      warning = FALSE,
+                      message = FALSE)
+
+```
+```{r}
+library(tidyverse)
+library(vegan)
+library(ggrepel)
+library(animation)
+
+```
+
+# Observed data
+
+## NMDS
+
+NMDS for the observed data (Bray–Curtis).
+
+```{r}
+d <- read_csv("../Khao Chong Formi 12March2015.csv")
+spab <- apply(d[,-1], 2, sum)
+siteab <- apply(d[,-1], 1, sum)
+d2 <- d[,-1]
+rownames(d2) <- d$X1
+
+d_mds <- metaMDS(d2)
+
+res_d <- as_data_frame(scores(d_mds)) %>%
+  mutate(site_year = rownames(d2)) %>%
+  mutate(site = str_split(site_year, " ") %>% sapply(., "[[", 1)) %>%
+  mutate(year = str_split(site_year, " ") %>% sapply(., "[[", 2))
+
+hull_fun <- function(data){
+  hull <- chull(data$NMDS1, data$NMDS2)
+  data %>%
+    slice(hull)
+}
+
+hull_dat <- res_d %>%
+  group_by(year) %>%
+  nest %>%
+  mutate(hull = map(data, hull_fun)) %>%
+  dplyr::select(hull) %>%
+  unnest %>%
+  mutate(site = str_split(site_year, " ") %>% sapply(., "[[", 1)) %>%
+  mutate(year = str_split(site_year, " ") %>% sapply(., "[[", 2))
+
+ggplot(res_d, aes(x = NMDS1, y = NMDS2, col = year)) +
+  geom_polygon(data = hull_dat, aes(x = NMDS1, y = NMDS2, fill = year, group = year), alpha = 0.3) +
+  geom_point() +
+  #geom_text(aes(label = site_year))
+  geom_text_repel(aes(label = site_year))
+
+```
+
+# Random communites 
+
+## Draw N indviduals from species pool until a target No. indviduals (siteab).
+
+### Example 
+
+Only one randimozation for now.
+
+```{r, cache=TRUE, comment=NA, eval = T}
+
+N_sim <- sample(siteab, 11, replace = TRUE)
+
+sppool <- names(rep(spab, spab))
+
+ab <- mapply(function(x){sample(sppool, x, replace = T)}, N_sim)
+
+ab2 <- mapply(table, ab)
+
+tmp <- data_frame(sp = names(spab))
+tmp3 <- NULL
+for (i in 1:11) {
+  tmp1 <- data_frame(sp = names(ab2[[i]]),
+                     ab = ab2[[i]])
+  tmp2 <- full_join(tmp, tmp1)
+  tmp3 <- cbind(tmp3, tmp2$ab)
+}
+
+rownames(tmp3) <- colnames(d[,-1])
+colnames(tmp3) <- paste0("rand", 1:11, " rand")
+tmp4 <- t(tmp3)
+tmp4[is.na(tmp4)] <- 0
+
+#print(tmp4)
+
+d3 <- rbind(d2, tmp4)
+
+d_mds2 <- metaMDS(d3)
+
+res_d2 <- as_data_frame(scores(d_mds2)) %>%
+  mutate(site_year = rownames(d3)) %>%
+  mutate(site = str_split(site_year, " ") %>% sapply(., "[[", 1)) %>%
+  mutate(year = str_split(site_year, " ") %>% sapply(., "[[", 2))
+
+hull_dat2 <- res_d2 %>%
+  group_by(year) %>%
+  nest %>%
+  #mutate(hull = map(data, function(x){chull(x$NMDS1, x$NMDS2)})) %>%
+  mutate(hull = map(data, hull_fun)) %>%
+  dplyr::select(hull) %>%
+  unnest %>%
+  mutate(site = str_split(site_year, " ") %>% sapply(., "[[", 1)) %>%
+  mutate(year = str_split(site_year, " ") %>% sapply(., "[[", 2))
+
+ggplot(res_d2, aes(x = NMDS1, y = NMDS2, col = year)) +
+  geom_polygon(data = hull_dat2, aes(x = NMDS1, y = NMDS2, fill = year, group = year), alpha = 0.3) +
+  geom_point() +
+  #geom_text(aes(label = site_year))
+  geom_text_repel(aes(label = site_year))
+
+
+```
+
+### Animation for 9 random communites
+
+```{r, cache=TRUE, comment=NA}
+
+rand_fun <- function(x) {
+  N_sim <- sample(siteab, 11, replace = TRUE)
+  sppool <- names(rep(spab, spab))
+  ab <- mapply(function(x){sample(sppool, x, replace = T)}, N_sim)
+  ab2 <- mapply(table, ab)
+
+  tmp <- data_frame(sp = names(spab))
+  tmp3 <- NULL
+  for (i in 1:11) {
+    tmp1 <- data_frame(sp = names(ab2[[i]]),
+                       ab = ab2[[i]])
+    tmp2 <- full_join(tmp, tmp1)
+    tmp3 <- cbind(tmp3, tmp2$ab)
+  }
+
+  rownames(tmp3) <- colnames(d[,-1])
+  colnames(tmp3) <- paste0("r", letters[1:11], " rand", x)
+  tmp4 <- t(tmp3)
+  tmp4[is.na(tmp4)] <- 0
+  tmp4
+}
+
+d3 <- d2
+for (i in 1:9) {
+  d3 <- rbind(d3, rand_fun(i))
+}
+
+d_mds2 <- metaMDS(d3)
+
+res_d2 <- as_data_frame(scores(d_mds2)) %>%
+  mutate(site_year = rownames(d3)) %>%
+  mutate(site = str_split(site_year, " ") %>% sapply(., "[[", 1)) %>%
+  mutate(year = str_split(site_year, " ") %>% sapply(., "[[", 2))
+
+plt_frame <- function(x){
+  res_d3 <- res_d2 %>%
+    filter(str_detect(year, paste(x) ) | str_detect(year, "2011|2012|2013|2014"))
+
+  hull_dat2 <- res_d3 %>%
+    group_by(year) %>%
+    nest %>%
+    #mutate(hull = map(data, function(x){chull(x$NMDS1, x$NMDS2)})) %>%
+    mutate(hull = map(data, hull_fun)) %>%
+    dplyr::select(hull) %>%
+    unnest %>%
+    mutate(site = str_split(site_year, " ") %>% sapply(., "[[", 1)) %>%
+    mutate(year = str_split(site_year, " ") %>% sapply(., "[[", 2))
+
+  plt <- ggplot(res_d3, aes(x = NMDS1, y = NMDS2, col = year)) +
+    geom_polygon(data = hull_dat2, aes(x = NMDS1, y = NMDS2, fill = year, group = year), alpha = 0.3) +
+    geom_point() +
+    coord_cartesian(xlim = c(-0.6, 0.6),
+                    ylim = c(-0.6, 0.6)) +
+    #geom_text(aes(label = site_year))
+    geom_text_repel(aes(label = site_year))
+
+  print(plt)
+}
+
+system.time(saveGIF(
+       lapply(1:9, function(x) plt_frame(x)),
+       interval = 0.2,
+       ani.width = 480,
+       ani.height = 480,
+       movie.name = "./moge.gif"
+        ))
+
+```
+
+![Random](./moge.gif)
+
+## Remove 50% of species from species pool
+
+### Animation
+
+```{r, cache=TRUE, comment=NA, eval = TRUE}
+
+rand_fun <- function(x) {
+  N_sim <- sample(siteab, 11, replace = TRUE)
+
+  sp10 <- round(length(spab) * 0.5)
+
+  spab2 <- sample(spab, sp10)
+
+  sppool <- names(rep(spab2, spab2))
+
+  ab <- mapply(function(x){sample(sppool, x, replace = T)}, N_sim)
+
+  ab2 <- mapply(table, ab)
+
+  tmp <- data_frame(sp = names(spab))
+  tmp3 <- NULL
+  for (i in 1:11) {
+    tmp1 <- data_frame(sp = names(ab2[[i]]),
+                       ab = ab2[[i]])
+    tmp2 <- full_join(tmp, tmp1)
+    tmp3 <- cbind(tmp3, tmp2$ab)
+  }
+
+  rownames(tmp3) <- colnames(d[,-1])
+  colnames(tmp3) <- paste0("r", letters[1:11], " rand", x)
+  tmp4 <- t(tmp3)
+  tmp4[is.na(tmp4)] <- 0
+  tmp4
+}
+
+d3 <- d2
+for (i in 1:9) {
+  d3 <- rbind(d3, rand_fun(i))
+}
+
+d_mds2 <- metaMDS(d3)
+
+res_d2 <- as_data_frame(scores(d_mds2)) %>%
+  mutate(site_year = rownames(d3)) %>%
+  mutate(site = str_split(site_year, " ") %>% sapply(., "[[", 1)) %>%
+  mutate(year = str_split(site_year, " ") %>% sapply(., "[[", 2))
+
+plt_frame <- function(x){
+  res_d3 <- res_d2 %>%
+    filter(str_detect(year, paste(x) ) | str_detect(year, "2011|2012|2013|2014"))
+
+  hull_dat2 <- res_d3 %>%
+    group_by(year) %>%
+    nest %>%
+    #mutate(hull = map(data, function(x){chull(x$NMDS1, x$NMDS2)})) %>%
+    mutate(hull = map(data, hull_fun)) %>%
+    dplyr::select(hull) %>%
+    unnest %>%
+    mutate(site = str_split(site_year, " ") %>% sapply(., "[[", 1)) %>%
+    mutate(year = str_split(site_year, " ") %>% sapply(., "[[", 2))
+
+  plt <- ggplot(res_d3, aes(x = NMDS1, y = NMDS2, col = year)) +
+    geom_polygon(data = hull_dat2, aes(x = NMDS1, y = NMDS2, fill = year, group = year), alpha = 0.3) +
+    geom_point() +
+    coord_cartesian(xlim = c(-0.6, 0.6),
+                    ylim = c(-0.6, 0.6)) +
+    #geom_text(aes(label = site_year))
+    geom_text_repel(aes(label = site_year))
+
+  print(plt)
+}
+
+system.time(saveGIF(
+       lapply(1:9, function(x) plt_frame(x)),
+       interval = 0.2,
+       ani.width = 480,
+       ani.height = 480,
+       movie.name = "./moge2.gif"
+        ))
+
+```
+
+![50% removal](./moge2.gif)
+
+
+
